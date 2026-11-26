@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telekomandë Kanalesh TV</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0d1017;
+      color: #f8fafc;
+      margin: 0;
+      padding: 20px;
+    }
+    .box {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #171c26;
+      border: 1px solid #2a3346;
+      border-radius: 14px;
+      padding: 20px;
+    }
+    h1 { font-size: 1.2rem; margin-top: 0; }
+    label { display: block; margin: 12px 0 6px; font-size: 0.9rem; color: #cbd5e1; }
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 1px solid #364158;
+      background: #0b0e14;
+      color: #fff;
+      font-size: 0.95rem;
+    }
+    .row { display: flex; gap: 10px; margin-top: 14px; }
+    button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: #16a34a;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.alt { background: #2563eb; }
+    button.gray { background: #334155; }
+    .channels { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+    .ch-btn { background: #1e293b; border: 1px solid #334155; font-weight: 600; }
+    .link-box {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #0b0e14;
+      border: 1px dashed #475569;
+      word-break: break-all;
+      font-size: 0.85rem;
+      color: #7dd3fc;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Komandimi i Kanaleve (Mobile → TV Box)</h1>
+
+    <label for="chName">Emri i kanalit</label>
+    <input id="chName" type="text" placeholder="p.sh. Kanali 1" />
+
+    <label for="chUrl">Linku i stream-it (.m3u8, .mpd, .mp4)</label>
+    <input id="chUrl" type="url" placeholder="https://.../stream.m3u8 ose .mpd" />
+
+    <div class="row">
+      <button class="alt" onclick="saveChannel()">Ruaj në Listë</button>
+      <button onclick="buildAndCopy()">Gjenero & Kopjo Linkun</button>
+    </div>
+
+    <label>Kanale të ruajtura (klikim i shpejtë)</label>
+    <div id="savedList" class="channels"></div>
+
+    <div id="outputUrl" class="link-box">Linku i TV Box-it do të shfaqet këtu...</div>
+    <div class="row">
+      <button class="gray" onclick="openPlayerHere()">Testo në Këtë Telefon</button>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "tv_remote_channels_v1";
+
+    function getChannels() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function setChannels(list) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      renderChannels();
+    }
+
+    function makeTvUrl(name, url) {
+      const base = window.location.href.replace(/\/[^/]*(\?.*)?$/, "/");
+      const u = new URL(`${base}tv.html`);
+      u.searchParams.set("src", url);
+      if (name) u.searchParams.set("ch", name);
+      return u.toString();
+    }
+
+    function saveChannel() {
+      const name = document.getElementById("chName").value.trim() || "Kanal";
+      const url = document.getElementById("chUrl").value.trim();
+      if (!url) return alert("Vendos linkun e stream-it.");
+      const list = getChannels().filter(item => item.url !== url);
+      list.unshift({ name, url });
+      setChannels(list.slice(0, 12));
+    }
+
+    async function buildAndCopy() {
+      const name = document.getElementById("chName").value.trim() || "Kanal";
+      const url = document.getElementById("chUrl").value.trim();
+      if (!url) return alert("Vendos linkun e stream-it.");
+      const finalUrl = makeTvUrl(name, url);
+      document.getElementById("outputUrl").textContent = finalUrl;
+      try {
+        await navigator.clipboard.writeText(finalUrl);
+        alert("Linku për TV Box u kopjua!");
+      } catch {
+        prompt("Kopjo linkun:", finalUrl);
+      }
+    }
+
+    function openPlayerHere() {
+      const name = document.getElementById("chName").value.trim() || "Kanal";
+      const url = document.getElementById("chUrl").value.trim();
+      if (!url) return;
+      window.location.href = makeTvUrl(name, url);
+    }
+
+    function renderChannels() {
+      const container = document.getElementById("savedList");
+      const list = getChannels();
+      container.innerHTML = "";
+      if (!list.length) {
+        container.innerHTML = "<span style='color:#94a3b8;font-size:0.85rem;'>Nuk ka kanale të ruajtura ende.</span>";
+        return;
+      }
+      list.forEach(item => {
+        const btn = document.createElement("button");
+        btn.className = "ch-btn";
+        btn.textContent = item.name;
+        btn.onclick = () => {
+          document.getElementById("chName").value = item.name;
+          document.getElementById("chUrl").value = item.url;
+          buildAndCopy();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    renderChannels();
+  </script>
+</body>
+</html>
